@@ -9,14 +9,10 @@ import (
 	"testing"
 
 	"go-api-server/models"
-	"go-api-server/storage"
 )
 
 func insertOrder(t *testing.T, db *sql.DB, userID int64, product string, quantity int, price float64) models.Order {
 	t.Helper()
-	if storage.Schema == "" {
-		t.Fatal("empty schema")
-	}
 
 	res, err := db.Exec(
 		`INSERT INTO orders (user_id, product, quantity, price) VALUES (?, ?, ?, ?)`,

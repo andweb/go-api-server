@@ -316,3 +316,13 @@
 
 - `GetUserOrders` + `ordersPage`; `TestGetUserOrdersPagination`.
 - README/AGENTS обновлены; тесты и `docker compose up -d --build` проверены.
+
+## Шаг 27 — 2026-09-03
+
+### Исходник промпта
+
+> давай уберем, чтобы чише было (про storage.Schema == "" в orders_test)
+
+### Краткий результат
+
+- Убрана бесполезная проверка `storage.Schema` и неиспользуемый импорт `storage` из `orders_test.go`.
