@@ -20,4 +20,10 @@ data/*.db-shm
 .DS_Store
 Thumbs.db
 
+# Coverage
+coverage.out
+coverage.html
+*.cover
+cover.out
+
 # Keep go.sum tracked (do not ignore)

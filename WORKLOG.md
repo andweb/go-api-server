@@ -176,3 +176,46 @@
 ### Краткий результат
 
 - Добавлен корневой `README.md`: структура, реальные команды (`go run ./cmd/seed`), таблица эндпоинтов, curl/JSON-примеры, планы развития.
+
+## Шаг 14 — 2026-09-03
+
+### Исходник промпта
+
+> Напиши handlers/users_test.go: setupTestDB (SQLite in-memory, схема InitDB), тесты GetUsers/GetUser/CreateUser/UpdateUser/DeleteUser с httptest, t.Run для подгрупп, 404 для not found.
+
+### Краткий результат
+
+- Добавлен `handlers/users_test.go` с in-memory SQLite и `storage.Migrate`.
+- `storage.Migrate`/`Schema` вынесены из `InitDB` для тестов.
+- `DeleteUser` теперь отдаёт 404, если запись не найдена (`RowsAffected`).
+
+## Шаг 15 — 2026-09-03
+
+### Исходник промпта
+
+> Напиши handlers/orders_test.go по аналогии с users_test.go. Протестируй GetUserOrders, CreateOrder, DeleteOrder. Те же хелперы setupTestDB и insertUser. Проверь список/пустой массив, создание с проверкой пользователя, удаление 204, негативы: user/order not found.
+
+### Краткий результат
+
+- Добавлен `handlers/orders_test.go`: `t.Run` для found/empty/not found, переиспользуются `setupTestDB` и `insertUser`.
+
+## Шаг 16 — 2026-09-03
+
+### Исходник промпта
+
+> для битого json или id точно надо
+
+### Краткий результат
+
+- В `users_test.go` / `orders_test.go` добавлены `t.Run("invalid id")` и `t.Run("invalid json")` → ожидается 400.
+
+## Шаг 17 — 2026-09-03
+
+### Исходник промпта
+
+> причесать gitignore, чтобы coverage не попадали в репу, добавить инструкцию по прогону тестов в ридми, в том числе с verbose и go test ./handlers -coverprofile=coverage.out / go tool cover -html=coverage.out -o coverage.html
+
+### Краткий результат
+
+- В `.gitignore`: `coverage.out`, `coverage.html`, `cover.out`, `*.cover`.
+- В README раздел «Тесты»: `go test ./...`, `-v`, команды покрытия.

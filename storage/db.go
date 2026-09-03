@@ -29,12 +29,15 @@ func InitDB() (*sql.DB, error) {
 		return nil, err
 	}
 
-	if _, err := db.Exec(`PRAGMA foreign_keys = ON`); err != nil {
+	if err := Migrate(db); err != nil {
 		db.Close()
 		return nil, err
 	}
 
-	const schema = `
+	return db, nil
+}
+
+const Schema = `
 CREATE TABLE IF NOT EXISTS users (
 	id INTEGER PRIMARY KEY AUTOINCREMENT,
 	name TEXT NOT NULL,
@@ -54,12 +57,13 @@ CREATE TABLE IF NOT EXISTS orders (
 	FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 `
-	if _, err := db.Exec(schema); err != nil {
-		db.Close()
-		return nil, err
-	}
 
-	return db, nil
+func Migrate(db *sql.DB) error {
+	if _, err := db.Exec(`PRAGMA foreign_keys = ON`); err != nil {
+		return err
+	}
+	_, err := db.Exec(Schema)
+	return err
 }
 
 func CloseDB(db *sql.DB) {

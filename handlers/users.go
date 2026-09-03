@@ -158,8 +158,19 @@ func DeleteUser(db *sql.DB) http.HandlerFunc {
 		}
 		defer stmt.Close()
 
-		if _, err := stmt.Exec(id); err != nil {
+		res, err := stmt.Exec(id)
+		if err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		n, err := res.RowsAffected()
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if n == 0 {
+			writeError(w, http.StatusNotFound, "user not found")
 			return
 		}
 

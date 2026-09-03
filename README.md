@@ -44,6 +44,22 @@ go run main.go
 Сервер слушает `http://localhost:8080`.  
 Повторный запуск сида при уже заполненной таблице `users` выведет `Database already seeded` и завершится без дублей.
 
+## Тесты
+
+```bash
+# все пакеты
+go test ./...
+
+# подробный вывод
+go test -v ./...
+
+# покрытие handlers + HTML-отчёт
+go test ./handlers -coverprofile=coverage.out
+go tool cover -html=coverage.out -o coverage.html
+```
+
+`coverage.out` и `coverage.html` в git не коммитятся (см. `.gitignore`).
+
 ## Эндпоинты
 
 | Метод | Путь | Описание |
@@ -113,7 +129,7 @@ curl -i -X DELETE http://localhost:8080/orders/1
 
 Планы развития проекта:
 
-- [ ] unit- и integration-тесты для handlers/storage
+- [x] unit-тесты для handlers
 - [ ] Dockerfile и `docker-compose` (API + volume для SQLite)
 - [ ] аутентификация (JWT / API key) и ограничение доступа к мутациям
 - [ ] валидация входных данных и единый слой ошибок
