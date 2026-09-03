@@ -50,6 +50,26 @@ func insertUser(t *testing.T, db *sql.DB, name, email string) models.User {
 	return models.User{ID: id, Name: name, Email: email}
 }
 
+func assertErrorResponse(t *testing.T, rec *httptest.ResponseRecorder, status int, msg string) {
+	t.Helper()
+	if rec.Code != status {
+		t.Fatalf("status = %d, want %d; body=%s", rec.Code, status, rec.Body.String())
+	}
+	var body ErrorResponse
+	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Error != msg {
+		t.Errorf("error = %q, want %q", body.Error, msg)
+	}
+	if body.Code != status {
+		t.Errorf("code = %d, want %d", body.Code, status)
+	}
+	if body.Timestamp == "" {
+		t.Error("timestamp is empty")
+	}
+}
+
 func TestGetUsers(t *testing.T) {
 	db := setupTestDB(t)
 	want := []models.User{
@@ -154,17 +174,7 @@ func TestGetUsersPagination(t *testing.T) {
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 
-		if rec.Code != http.StatusBadRequest {
-			t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusBadRequest, rec.Body.String())
-		}
-
-		var body errorBody
-		if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
-			t.Fatal(err)
-		}
-		if body.Error != "limit cannot exceed 100" {
-			t.Errorf("error = %q, want %q", body.Error, "limit cannot exceed 100")
-		}
+		assertErrorResponse(t, rec, http.StatusBadRequest, "limit cannot exceed 100")
 	})
 
 	t.Run("invalid limit", func(t *testing.T) {
@@ -172,9 +182,7 @@ func TestGetUsersPagination(t *testing.T) {
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 
-		if rec.Code != http.StatusBadRequest {
-			t.Errorf("status = %d, want %d; body=%s", rec.Code, http.StatusBadRequest, rec.Body.String())
-		}
+		assertErrorResponse(t, rec, http.StatusBadRequest, "invalid request")
 	})
 }
 
@@ -213,9 +221,7 @@ func TestGetUser(t *testing.T) {
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 
-		if rec.Code != http.StatusNotFound {
-			t.Errorf("status = %d, want %d; body=%s", rec.Code, http.StatusNotFound, rec.Body.String())
-		}
+		assertErrorResponse(t, rec, http.StatusNotFound, "not found")
 	})
 
 	t.Run("invalid id", func(t *testing.T) {
@@ -228,9 +234,7 @@ func TestGetUser(t *testing.T) {
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 
-		if rec.Code != http.StatusBadRequest {
-			t.Errorf("status = %d, want %d; body=%s", rec.Code, http.StatusBadRequest, rec.Body.String())
-		}
+		assertErrorResponse(t, rec, http.StatusBadRequest, "invalid request")
 	})
 }
 
@@ -288,9 +292,7 @@ func TestCreateUser(t *testing.T) {
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 
-		if rec.Code != http.StatusBadRequest {
-			t.Errorf("status = %d, want %d; body=%s", rec.Code, http.StatusBadRequest, rec.Body.String())
-		}
+		assertErrorResponse(t, rec, http.StatusBadRequest, "invalid request")
 	})
 }
 
@@ -354,9 +356,7 @@ func TestUpdateUser(t *testing.T) {
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 
-		if rec.Code != http.StatusNotFound {
-			t.Errorf("status = %d, want %d; body=%s", rec.Code, http.StatusNotFound, rec.Body.String())
-		}
+		assertErrorResponse(t, rec, http.StatusNotFound, "not found")
 	})
 
 	t.Run("invalid id", func(t *testing.T) {
@@ -370,9 +370,7 @@ func TestUpdateUser(t *testing.T) {
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 
-		if rec.Code != http.StatusBadRequest {
-			t.Errorf("status = %d, want %d; body=%s", rec.Code, http.StatusBadRequest, rec.Body.String())
-		}
+		assertErrorResponse(t, rec, http.StatusBadRequest, "invalid request")
 	})
 
 	t.Run("invalid json", func(t *testing.T) {
@@ -387,9 +385,7 @@ func TestUpdateUser(t *testing.T) {
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 
-		if rec.Code != http.StatusBadRequest {
-			t.Errorf("status = %d, want %d; body=%s", rec.Code, http.StatusBadRequest, rec.Body.String())
-		}
+		assertErrorResponse(t, rec, http.StatusBadRequest, "invalid request")
 	})
 }
 
@@ -426,9 +422,7 @@ func TestDeleteUser(t *testing.T) {
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 
-		if rec.Code != http.StatusNotFound {
-			t.Errorf("status = %d, want %d; body=%s", rec.Code, http.StatusNotFound, rec.Body.String())
-		}
+		assertErrorResponse(t, rec, http.StatusNotFound, "not found")
 	})
 
 	t.Run("invalid id", func(t *testing.T) {
@@ -441,8 +435,6 @@ func TestDeleteUser(t *testing.T) {
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 
-		if rec.Code != http.StatusBadRequest {
-			t.Errorf("status = %d, want %d; body=%s", rec.Code, http.StatusBadRequest, rec.Body.String())
-		}
+		assertErrorResponse(t, rec, http.StatusBadRequest, "invalid request")
 	})
 }

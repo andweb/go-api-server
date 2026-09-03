@@ -104,9 +104,7 @@ func TestGetUserOrders(t *testing.T) {
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 
-		if rec.Code != http.StatusNotFound {
-			t.Errorf("status = %d, want %d; body=%s", rec.Code, http.StatusNotFound, rec.Body.String())
-		}
+		assertErrorResponse(t, rec, http.StatusNotFound, "not found")
 	})
 
 	t.Run("invalid id", func(t *testing.T) {
@@ -119,9 +117,7 @@ func TestGetUserOrders(t *testing.T) {
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 
-		if rec.Code != http.StatusBadRequest {
-			t.Errorf("status = %d, want %d; body=%s", rec.Code, http.StatusBadRequest, rec.Body.String())
-		}
+		assertErrorResponse(t, rec, http.StatusBadRequest, "invalid request")
 	})
 }
 
@@ -191,17 +187,7 @@ func TestGetUserOrdersPagination(t *testing.T) {
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 
-		if rec.Code != http.StatusBadRequest {
-			t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusBadRequest, rec.Body.String())
-		}
-
-		var body errorBody
-		if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
-			t.Fatal(err)
-		}
-		if body.Error != "limit cannot exceed 100" {
-			t.Errorf("error = %q, want %q", body.Error, "limit cannot exceed 100")
-		}
+		assertErrorResponse(t, rec, http.StatusBadRequest, "limit cannot exceed 100")
 	})
 
 	t.Run("invalid limit", func(t *testing.T) {
@@ -209,9 +195,7 @@ func TestGetUserOrdersPagination(t *testing.T) {
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 
-		if rec.Code != http.StatusBadRequest {
-			t.Errorf("status = %d, want %d; body=%s", rec.Code, http.StatusBadRequest, rec.Body.String())
-		}
+		assertErrorResponse(t, rec, http.StatusBadRequest, "invalid request")
 	})
 }
 
@@ -276,9 +260,7 @@ func TestCreateOrder(t *testing.T) {
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 
-		if rec.Code != http.StatusNotFound {
-			t.Errorf("status = %d, want %d; body=%s", rec.Code, http.StatusNotFound, rec.Body.String())
-		}
+		assertErrorResponse(t, rec, http.StatusNotFound, "not found")
 
 		var count int
 		if err := db.QueryRow(`SELECT COUNT(*) FROM orders`).Scan(&count); err != nil {
@@ -301,9 +283,7 @@ func TestCreateOrder(t *testing.T) {
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 
-		if rec.Code != http.StatusBadRequest {
-			t.Errorf("status = %d, want %d; body=%s", rec.Code, http.StatusBadRequest, rec.Body.String())
-		}
+		assertErrorResponse(t, rec, http.StatusBadRequest, "invalid request")
 	})
 }
 
@@ -341,9 +321,7 @@ func TestDeleteOrder(t *testing.T) {
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 
-		if rec.Code != http.StatusNotFound {
-			t.Errorf("status = %d, want %d; body=%s", rec.Code, http.StatusNotFound, rec.Body.String())
-		}
+		assertErrorResponse(t, rec, http.StatusNotFound, "not found")
 	})
 
 	t.Run("invalid id", func(t *testing.T) {
@@ -356,8 +334,6 @@ func TestDeleteOrder(t *testing.T) {
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, req)
 
-		if rec.Code != http.StatusBadRequest {
-			t.Errorf("status = %d, want %d; body=%s", rec.Code, http.StatusBadRequest, rec.Body.String())
-		}
+		assertErrorResponse(t, rec, http.StatusBadRequest, "invalid request")
 	})
 }

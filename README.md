@@ -139,7 +139,7 @@ go tool cover -html=coverage.out -o coverage.html
 Ошибки возвращаются в формате:
 
 ```json
-{"error": "user not found"}
+{"error":"not found","code":404,"timestamp":"2026-09-03T12:00:00Z"}
 ```
 
 Коды: `200` / `201` / `204` при успехе, `400` при невалидном вводе, `404` если запись не найдена.
@@ -208,7 +208,8 @@ curl -i -X DELETE http://localhost:8080/orders/1
 - [x] Dockerfile (multistage)
 - [x] docker-compose (3 реплики + volume для SQLite)
 - [ ] аутентификация (JWT / API key) и ограничение доступа к мутациям
-- [ ] валидация входных данных и единый слой ошибок
+- [x] единый слой ошибок (`handleError` / `ErrorResponse`)
+- [ ] валидация входных данных
 - [x] пагинация для списка users (`limit`/`offset`)
 - [x] пагинация для заказов пользователя (`GET /users/{id}/orders`)
 

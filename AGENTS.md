@@ -71,7 +71,7 @@ docker-compose.yml   # 3 реплики api, порты 8080–8082, volume ./da
 
 ### handlers/
 
-- `helpers.go` — `writeError`, `respondJSON`, `parseUserID`, `errorBody`.
+- `helpers.go` — `handleError`, `ErrorResponse`, `respondJSON`, `parseUserID`.
 - `users.go` — CRUD + пагинация `GetUsers`.
 - `orders.go` — `GetUserOrders` (пагинация), `CreateOrder`, `DeleteOrder`.
 - Хендлеры: `func Xxx(db *sql.DB) http.HandlerFunc`.
@@ -91,14 +91,15 @@ docker-compose.yml   # 3 реплики api, порты 8080–8082, volume ./da
 
 Пагинация (`GetUsers`, `GetUserOrders`): default `limit=20`, `offset=0`; `limit > 100` → 400 `"limit cannot exceed 100"`; нечисловые query → 400; SQL `LIMIT ? OFFSET ?` + `SELECT COUNT(*)`.
 
-HTTP-коды: `200` / `201` / `204`; `404` → `{"error":"..."}`; `400` при невалидном вводе.
+HTTP-коды: `200` / `201` / `204`; `400`/`404`/`500` через `handleError` → `{"error","code","timestamp"}`.
 
 ## Правила кодинга
 
 ### Ответы HTTP
 
 - Успех: `respondJSON(w, status, data)`.
-- Ошибки: `writeError(w, status, msg)` → `{"error":"..."}`.
+- Ошибки: `handleError(w, err, status, msg)` → `{"error":"...","code":N,"timestamp":"..."}`.
+- Пустой `msg` → текст по статусу (`bad request` / `not found` / `internal error`); детали `err` только в лог.
 - `204`: `respondJSON(w, http.StatusNoContent, nil)` (nil → без тела).
 - Хелперы только в `helpers.go`, не дублировать.
 

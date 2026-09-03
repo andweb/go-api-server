@@ -326,3 +326,24 @@
 ### Краткий результат
 
 - Убрана бесполезная проверка `storage.Schema` и неиспользуемый импорт `storage` из `orders_test.go`.
+
+## Шаг 28 — 2026-09-03
+
+### Исходник промпта
+
+> Рефакторинг ошибок: ErrorResponse + handleError вместо writeError; обновить тесты; go test; docker compose build --no-cache && up -d; curl limit=abc; коммит.
+
+### Краткий результат
+
+- Единый `handleError` / `ErrorResponse` (`error`, `code`, `timestamp`); `writeError` удалён.
+- Тесты, docker rebuild и curl проверены; коммит `refactor: add unified error handling layer`.
+
+## Шаг 29 — 2026-09-03
+
+### Исходник промпта
+
+> кажется, закрыли блок про обработку ошибк в readme
+
+### Краткий результат
+
+- В README «Что дальше»: отмечен `[x] единый слой ошибок`, валидация оставлена отдельным открытым пунктом.
