@@ -20,11 +20,14 @@ go-api-server/
 ├── handlers/         # HTTP-хендлеры users/orders + helpers
 ├── cmd/seed/seed.go  # заполнение тестовыми данными
 ├── data/             # shop.db (создаётся при запуске)
+├── Dockerfile        # multistage-сборка образа
 ├── AGENTS.md         # правила для AI-агентов
 └── go.mod
 ```
 
 ## Запуск
+
+### Локально
 
 ```bash
 # 1. Клонировать репозиторий
@@ -43,6 +46,33 @@ go run main.go
 
 Сервер слушает `http://localhost:8080`.  
 Повторный запуск сида при уже заполненной таблице `users` выведет `Database already seeded` и завершится без дублей.
+
+### Docker
+
+```bash
+# Собрать образ
+docker build -t go-api-server .
+
+# Запуск в фоне (daemon) с именем контейнера
+docker run -d --name go-api-server -p 8080:8080 go-api-server
+
+# Остановить и удалить контейнер
+docker stop go-api-server
+docker rm go-api-server
+```
+
+Пример с сохранением БД на хосте:
+
+```bash
+docker run -d --name go-api-server -p 8080:8080 \
+  -v "$(pwd)/data:/app/data" go-api-server
+
+docker stop go-api-server && docker rm go-api-server
+```
+
+Проверить, что контейнер работает: `docker ps` или `curl -s http://localhost:8080/users`.
+
+Сид в образе отдельно не запускается — для тестовых данных либо volume с уже заполненной БД, либо `POST /users` / `POST /orders` через API.
 
 ## Тесты
 
@@ -130,7 +160,8 @@ curl -i -X DELETE http://localhost:8080/orders/1
 Планы развития проекта:
 
 - [x] unit-тесты для handlers
-- [ ] Dockerfile и `docker-compose` (API + volume для SQLite)
+- [x] Dockerfile (multistage)
+- [ ] docker-compose (API + volume для SQLite)
 - [ ] аутентификация (JWT / API key) и ограничение доступа к мутациям
 - [ ] валидация входных данных и единый слой ошибок
 - [ ] пагинация для списков users/orders

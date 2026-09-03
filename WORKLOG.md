@@ -219,3 +219,44 @@
 
 - В `.gitignore`: `coverage.out`, `coverage.html`, `cover.out`, `*.cover`.
 - В README раздел «Тесты»: `go test ./...`, `-v`, команды покрытия.
+
+## Шаг 18 — 2026-09-03
+
+### Исходник промпта
+
+> Создай Dockerfile: multistage, golang:1.22-alpine → alpine/scratch, CGO_ENABLED=0, бинарник api-server + data/, EXPOSE 8080, CMD ["./api-server"], комментарии к этапам. SQLite через modernc без CGO.
+
+### Краткий результат
+
+- Добавлен `Dockerfile` (builder + `alpine:latest`), бинарник `api-server`, `GOTOOLCHAIN=auto` из‑за `go 1.25` в `go.mod`.
+- Добавлен `.dockerignore` (локальный `data/*.db`, coverage, docs), чтобы в образ не уезжала БД.
+
+## Шаг 19 — 2026-09-03
+
+### Исходник промпта
+
+> .dockerignore для Go-проекта. Исключи: .git/, .idea/, .vscode/, *.db, coverage.out, *.test, Dockerfile, .dockerignore, README.md, .env.
+
+### Краткий результат
+
+- `.dockerignore` приведён к указанному списку исключений.
+
+## Шаг 20 — 2026-09-03
+
+### Исходник промпта
+
+> а в readme чтож не добавил как запустить
+
+### Краткий результат
+
+- В README: раздел Docker (`docker build` / `docker run`, опциональный volume для `data/`).
+
+## Шаг 21 — 2026-09-03
+
+### Исходник промпта
+
+> давай сделаем, чтобы в режиме демона запукалось и еще команду для остановки с примером
+
+### Краткий результат
+
+- В README Docker: `docker run -d --name go-api-server`, `docker stop` / `docker rm`, пример с volume.
