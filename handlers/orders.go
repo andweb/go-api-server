@@ -4,16 +4,49 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"go-api-server/models"
 )
 
-// GetUserOrders returns all orders for the user ID from the URL path.
+type ordersPage struct {
+	Data   []models.Order `json:"data"`
+	Total  int            `json:"total"`
+	Limit  int            `json:"limit"`
+	Offset int            `json:"offset"`
+}
+
+// GetUserOrders returns a paginated list of orders for the user ID from the URL path.
 func GetUserOrders(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, err := parseUserID(r)
 		if err != nil {
 			writeError(w, http.StatusBadRequest, "invalid id")
+			return
+		}
+
+		limit := 20
+		offset := 0
+
+		q := r.URL.Query()
+		if raw := q.Get("limit"); raw != "" {
+			n, err := strconv.Atoi(raw)
+			if err != nil {
+				writeError(w, http.StatusBadRequest, "invalid limit")
+				return
+			}
+			limit = n
+		}
+		if raw := q.Get("offset"); raw != "" {
+			n, err := strconv.Atoi(raw)
+			if err != nil {
+				writeError(w, http.StatusBadRequest, "invalid offset")
+				return
+			}
+			offset = n
+		}
+		if limit > 100 {
+			writeError(w, http.StatusBadRequest, "limit cannot exceed 100")
 			return
 		}
 
@@ -28,14 +61,20 @@ func GetUserOrders(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		stmt, err := db.Prepare(`SELECT id, user_id, product, quantity, price FROM orders WHERE user_id = ?`)
+		var total int
+		if err := db.QueryRow(`SELECT COUNT(*) FROM orders WHERE user_id = ?`, userID).Scan(&total); err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		stmt, err := db.Prepare(`SELECT id, user_id, product, quantity, price FROM orders WHERE user_id = ? LIMIT ? OFFSET ?`)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 		defer stmt.Close()
 
-		rows, err := stmt.Query(userID)
+		rows, err := stmt.Query(userID, limit, offset)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
@@ -56,7 +95,12 @@ func GetUserOrders(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		respondJSON(w, http.StatusOK, orders)
+		respondJSON(w, http.StatusOK, ordersPage{
+			Data:   orders,
+			Total:  total,
+			Limit:  limit,
+			Offset: offset,
+		})
 	}
 }
 

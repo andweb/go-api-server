@@ -305,3 +305,14 @@
 
 - README: после правок кода — `docker compose up -d --build` / повторный `docker build`.
 - `AGENTS.md` актуализирован: тесты, Docker/Compose, пагинация `GetUsers`, Migrate, без `version` в compose.
+
+## Шаг 26 — 2026-09-03
+
+### Исходник промпта
+
+> Пагинация GET /users/{id}/orders как у GET /users; тесты по аналогии; обновить доки; пересобрать и проверить.
+
+### Краткий результат
+
+- `GetUserOrders` + `ordersPage`; `TestGetUserOrdersPagination`.
+- README/AGENTS обновлены; тесты и `docker compose up -d --build` проверены.

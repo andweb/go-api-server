@@ -73,7 +73,7 @@ docker-compose.yml   # 3 реплики api, порты 8080–8082, volume ./da
 
 - `helpers.go` — `writeError`, `respondJSON`, `parseUserID`, `errorBody`.
 - `users.go` — CRUD + пагинация `GetUsers`.
-- `orders.go` — `GetUserOrders`, `CreateOrder`, `DeleteOrder`.
+- `orders.go` — `GetUserOrders` (пагинация), `CreateOrder`, `DeleteOrder`.
 - Хендлеры: `func Xxx(db *sql.DB) http.HandlerFunc`.
 - ID из URL: `r.PathValue("id")`.
 - Тесты: `httptest` + `setupTestDB` (SQLite `:memory:` + `storage.Migrate`).
@@ -85,11 +85,11 @@ docker-compose.yml   # 3 реплики api, порты 8080–8082, volume ./da
 | POST | `/users` | `CreateUser` | |
 | PUT | `/users/{id}` | `UpdateUser` | |
 | DELETE | `/users/{id}` | `DeleteUser` | 204 / 404 |
-| GET | `/users/{id}/orders` | `GetUserOrders` | |
+| GET | `/users/{id}/orders` | `GetUserOrders` | та же пагинация; `COUNT(*)` по `user_id` |
 | POST | `/orders` | `CreateOrder` | |
 | DELETE | `/orders/{id}` | `DeleteOrder` | 204 / 404 |
 
-Пагинация `GetUsers`: default `limit=20`, `offset=0`; `limit > 100` → 400 `"limit cannot exceed 100"`; нечисловые query → 400; SQL `LIMIT ? OFFSET ?` + `SELECT COUNT(*)`.
+Пагинация (`GetUsers`, `GetUserOrders`): default `limit=20`, `offset=0`; `limit > 100` → 400 `"limit cannot exceed 100"`; нечисловые query → 400; SQL `LIMIT ? OFFSET ?` + `SELECT COUNT(*)`.
 
 HTTP-коды: `200` / `201` / `204`; `404` → `{"error":"..."}`; `400` при невалидном вводе.
 

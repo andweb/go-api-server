@@ -132,7 +132,7 @@ go tool cover -html=coverage.out -o coverage.html
 | `POST` | `/users` | создать пользователя |
 | `PUT` | `/users/{id}` | обновить пользователя |
 | `DELETE` | `/users/{id}` | удалить пользователя |
-| `GET` | `/users/{id}/orders` | заказы пользователя |
+| `GET` | `/users/{id}/orders` | заказы пользователя (`?limit=&offset=`, по умолчанию 20/0) |
 | `POST` | `/orders` | создать заказ |
 | `DELETE` | `/orders/{id}` | удалить заказ |
 
@@ -175,7 +175,13 @@ curl -s -X POST http://localhost:8080/users \
 ### Заказы пользователя
 
 ```bash
-curl -s http://localhost:8080/users/1/orders
+curl -s "http://localhost:8080/users/1/orders?limit=20&offset=0"
+```
+
+Пример ответа:
+
+```json
+{"data":[{"id":1,"user_id":1,"product":"Laptop","quantity":1,"price":1000}],"total":5,"limit":20,"offset":0}
 ```
 
 ### Создать заказ
@@ -204,7 +210,7 @@ curl -i -X DELETE http://localhost:8080/orders/1
 - [ ] аутентификация (JWT / API key) и ограничение доступа к мутациям
 - [ ] валидация входных данных и единый слой ошибок
 - [x] пагинация для списка users (`limit`/`offset`)
-- [ ] пагинация для списка orders
+- [x] пагинация для заказов пользователя (`GET /users/{id}/orders`)
 
 ## Автор
 
