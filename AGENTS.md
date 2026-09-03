@@ -4,11 +4,11 @@
 
 ## О проекте
 
-REST API на **Go 1.22+** с **SQLite** (`modernc.org/sqlite`, файл `data/shop.db`).
+REST API на **Go 1.22+** (в `go.mod` сейчас может быть выше из‑за зависимостей) с **SQLite** (`modernc.org/sqlite`, без CGO, файл `data/shop.db`).
 
 Модуль: `go-api-server`.
 
-Домен: пользователи (`users`) и заказы (`orders`). Продукты есть в сиде/схеме, отдельного HTTP CRUD для products пока нет.
+Домен: пользователи (`users`) и заказы (`orders`). Продукты есть в сиде/схеме, отдельного HTTP CRUD для products нет.
 
 ID сущностей выдаёт SQLite `AUTOINCREMENT` — в коде ID не назначать при создании.
 
@@ -21,97 +21,114 @@ go mod tidy
 go build ./...
 go run main.go
 go run ./cmd/seed
+go test ./...
+go test -v ./handlers
+go test ./handlers -coverprofile=coverage.out
+go tool cover -html=coverage.out -o coverage.html
 ```
 
-- `go run main.go` — HTTP-сервер (точка входа в корне).
-- `go run ./cmd/seed` — заполнение тестовыми данными; повторный запуск при уже заполненных users печатает `Database already seeded` и выходит.
-- Сид и сервер ожидают рабочую директорию = корень модуля (путь `data/shop.db` относительный).
+Docker / Compose (плагин `docker compose`, не `docker-compose`):
 
-Не коммитить секреты. База `data/shop.db` — локальные данные; не считать её исходником API.
+```bash
+docker build -t go-api-server .
+docker compose up -d --build
+docker compose logs -f
+docker compose down
+```
+
+**После любого изменения кода** образ нужно пересобрать: `docker compose up -d --build` или `docker build` + перезапуск контейнера. Иначе в контейнере останется старый бинарник.
+
+- Сид и сервер ожидают cwd = корень модуля (`data/shop.db` относительный).
+- `coverage.out` / `coverage.html` / `*.db` — в `.gitignore`, не коммитить.
+- База `data/shop.db` — локальные данные, не исходник API.
 
 ## Архитектура
 
 ```
-models/     # структуры User, Order + JSON-теги
-storage/    # InitDB / CloseDB, схема SQLite
-handlers/   # HTTP-хендлеры users/orders + helpers
-cmd/seed/   # отдельный исполняемый сид (не часть main.go)
-data/       # shop.db (создаётся InitDB)
+main.go              # ServeMux, logging middleware, :8080
+models/              # User, Order + JSON-теги
+storage/             # InitDB, CloseDB, Migrate, Schema
+handlers/            # users, orders, helpers + *_test.go
+cmd/seed/            # отдельный сид (не в main.go)
+data/                # shop.db + .gitkeep
+Dockerfile           # multistage, CGO_ENABLED=0, бинарник api-server
+docker-compose.yml   # 3 реплики api, порты 8080–8082, volume ./data
 ```
 
 ### models/
 
 - `User`: `id`, `name`, `email`
 - `Order`: `id`, `user_id`, `product`, `quantity`, `price`
-- Только DTO/доменные структуры. Без SQL и без HTTP.
+- Только структуры. Без SQL и без HTTP.
 
 ### storage/
 
-- Пакет `storage`.
-- `InitDB() (*sql.DB, error)` — создаёт `data/` при необходимости, открывает `data/shop.db`, включает `PRAGMA foreign_keys = ON`, создаёт таблицы через `CREATE TABLE IF NOT EXISTS`.
-- `CloseDB(db *sql.DB)` — закрытие соединения.
-- Таблицы: `users`, `products`, `orders` (`orders.user_id` → `users(id) ON DELETE CASCADE`).
-- Драйвер: blank-import `_ "modernc.org/sqlite"`, DSN driver name `"sqlite"`.
+- `InitDB() (*sql.DB, error)` → `data/shop.db`, `PRAGMA foreign_keys = ON`, затем `Migrate`.
+- `Migrate(db)` / `Schema` — общая схема для InitDB и тестов (in-memory SQLite).
+- `CloseDB(db *sql.DB)`.
+- Таблицы: `users`, `products`, `orders` (`ON DELETE CASCADE` на `user_id`).
+- Драйвер: `_ "modernc.org/sqlite"`, имя драйвера `"sqlite"`.
 
 ### handlers/
 
-- Пакет `handlers`.
-- `helpers.go` — общие `writeError`, `respondJSON`, `parseUserID`, `errorBody`.
-- `users.go` — CRUD пользователей.
-- `orders.go` — заказы пользователя, создание заказа, удаление заказа.
-- Хендлеры вида `func Xxx(db *sql.DB) http.HandlerFunc`.
-- ID из URL: `r.PathValue("id")` (Go 1.22+).
-- JSON body: `json.NewDecoder(r.Body).Decode(...)`.
+- `helpers.go` — `writeError`, `respondJSON`, `parseUserID`, `errorBody`.
+- `users.go` — CRUD + пагинация `GetUsers`.
+- `orders.go` — `GetUserOrders`, `CreateOrder`, `DeleteOrder`.
+- Хендлеры: `func Xxx(db *sql.DB) http.HandlerFunc`.
+- ID из URL: `r.PathValue("id")`.
+- Тесты: `httptest` + `setupTestDB` (SQLite `:memory:` + `storage.Migrate`).
 
-Ожидаемые маршруты (когда есть router в `main.go`):
+| Method | Path | Handler | Заметки |
+|--------|------|---------|---------|
+| GET | `/users` | `GetUsers` | `?limit=&offset=`; ответ `{data,total,limit,offset}` |
+| GET | `/users/{id}` | `GetUser` | |
+| POST | `/users` | `CreateUser` | |
+| PUT | `/users/{id}` | `UpdateUser` | |
+| DELETE | `/users/{id}` | `DeleteUser` | 204 / 404 |
+| GET | `/users/{id}/orders` | `GetUserOrders` | |
+| POST | `/orders` | `CreateOrder` | |
+| DELETE | `/orders/{id}` | `DeleteOrder` | 204 / 404 |
 
-| Method | Path | Handler |
-|--------|------|---------|
-| GET | `/users` | `GetUsers` |
-| GET | `/users/{id}` | `GetUser` |
-| POST | `/users` | `CreateUser` |
-| PUT | `/users/{id}` | `UpdateUser` |
-| DELETE | `/users/{id}` | `DeleteUser` |
-| GET | `/users/{id}/orders` | `GetUserOrders` |
-| POST | `/orders` | `CreateOrder` |
-| DELETE | `/orders/{id}` | `DeleteOrder` |
+Пагинация `GetUsers`: default `limit=20`, `offset=0`; `limit > 100` → 400 `"limit cannot exceed 100"`; нечисловые query → 400; SQL `LIMIT ? OFFSET ?` + `SELECT COUNT(*)`.
 
-HTTP-коды: успех списка/чтения/обновления — `200`; создание — `201`; удаление — `204`; нет записи — `404` с `{"error":"..."}`; невалидный ввод — `400`.
+HTTP-коды: `200` / `201` / `204`; `404` → `{"error":"..."}`; `400` при невалидном вводе.
 
 ## Правила кодинга
 
 ### Ответы HTTP
 
-- Успешный JSON: только через `respondJSON(w, status, data)`.
-- Ошибки: только через `writeError(w, status, msg)` → тело `{"error":"..."}`.
-- Для `204 No Content` вызывать `respondJSON(w, http.StatusNoContent, nil)` — при `data == nil` тело не кодировать.
-- Не дублировать `w.Header().Set("Content-Type", ...)` / `json.NewEncoder` в хендлерах.
-- Общие хелперы держать в `handlers/helpers.go`, не копировать в `users.go` / `orders.go`.
+- Успех: `respondJSON(w, status, data)`.
+- Ошибки: `writeError(w, status, msg)` → `{"error":"..."}`.
+- `204`: `respondJSON(w, http.StatusNoContent, nil)` (nil → без тела).
+- Хелперы только в `helpers.go`, не дублировать.
 
 ### SQL
 
-- Только параметризованные запросы: `?` + `Prepare` / `Query` / `QueryRow` / `Exec`.
-- **Запрещено** собирать SQL через `fmt.Sprintf` / конкатенацию строк с пользовательскими данными.
-- Проверка существования: `QueryRow(...).Scan` + `sql.ErrNoRows` → 404.
-- После `INSERT` брать ID через `LastInsertId()`.
-- После `DELETE`/`UPDATE`, где нужен 404, проверять `RowsAffected()`.
+- Только `?` + `Prepare` / `Query` / `QueryRow` / `Exec`.
+- **Запрещено** `fmt.Sprintf` / конкатенация SQL с пользовательскими данными.
+- Нет записи: `sql.ErrNoRows` или `RowsAffected() == 0` → 404.
+- После `INSERT` — `LastInsertId()`.
 
-### Пакеты и зависимости
+### Docker
 
-- Модели — в `models`, БД — в `storage`, HTTP — в `handlers`.
-- Сид — только `cmd/seed`, не вшивать в `main.go`.
-- Импорт моделей в `storage` допустим для связи пакетов; бизнес-логика HTTP не должна жить в `storage`.
-- Новый код — в стиле существующих файлов (короткие хендлеры, early return, `defer stmt.Close()`).
+- Multistage: `golang:1.22-alpine` (при необходимости `GOTOOLCHAIN=auto`) → `alpine:latest`.
+- Бинарник: `api-server`; в образ — бинарник + `data/`.
+- Compose: сервис `api`, `deploy.replicas: 3`, порты `8080-8082:8080`, volume `./data`.
+- Не задавать `container_name` вместе с `replicas`.
+- Поле `version:` в compose не использовать (Compose v2+/v5).
+- Общий SQLite на несколько реплик — только для учёбы (гонки записи).
 
-### Документация агентов
+### Документация
 
-- Экспортируемые функции (`GetUsers`, `CreateOrder`, …) — с кратким godoc-комментарием.
-- Журнал работ проекта ведётся в `WORKLOG.md`: исходник промпта + краткий результат по шагам. При существенных изменениях по запросу пользователя — дописывать шаг туда.
+- Экспортируемые хендлеры — с кратким godoc.
+- `WORKLOG.md` — шаги: исходник промпта + краткий результат.
+- Держать `AGENTS.md` и README в синхроне с реальным поведением API (пагинация, Docker rebuild и т.д.).
 
 ## Чего не делать
 
-- Не назначать `id` вручную при создании записей.
-- Не отключать foreign keys без явной причины.
-- Не класть второй `package main` рядом с корневым `main.go` (сид — в `cmd/seed`).
+- Не назначать `id` вручную при создании.
+- Не отключать foreign keys без причины.
+- Не класть второй `package main` рядом с `main.go` (сид — `cmd/seed`).
 - Не добавлять ORM / другой SQL-драйвер без явного запроса.
-- Не раздувать `AGENTS.md` общими гайдами по Go — только правила этого репозитория.
+- Не коммитить `coverage.*`, `data/*.db`, `.env`.
+- Не раздувать `AGENTS.md` общими гайдами по Go.

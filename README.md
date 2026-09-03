@@ -56,6 +56,9 @@ go run main.go
 # Собрать и запустить в фоне
 docker compose up -d
 
+# После изменения кода — обязательно пересобрать образ
+docker compose up -d --build
+
 # Смотреть логи всех реплик
 docker compose logs -f
 
@@ -63,10 +66,12 @@ docker compose logs -f
 docker compose down
 ```
 
+> 🔁 **Важно:** правки в Go-коде сами в уже запущенные контейнеры не попадут. Нужен rebuild (`--build` или `docker compose build` + `up -d`), иначе крутится старый бинарник.
+
 Проверка:
 
 ```bash
-curl -s http://localhost:8080/users
+curl -s "http://localhost:8080/users?limit=20&offset=0"
 curl -s http://localhost:8081/users
 curl -s http://localhost:8082/users
 ```
@@ -86,6 +91,8 @@ docker run -d --name go-api-server -p 8080:8080 go-api-server
 docker stop go-api-server
 docker rm go-api-server
 ```
+
+После правок в коде снова `docker build -t go-api-server .`, затем stop/rm и новый `docker run …`.
 
 Пример с сохранением БД на хосте:
 
@@ -120,7 +127,7 @@ go tool cover -html=coverage.out -o coverage.html
 
 | Метод | Путь | Описание |
 |-------|------|----------|
-| `GET` | `/users` | список всех пользователей |
+| `GET` | `/users` | список пользователей (`?limit=&offset=`, по умолчанию 20/0) |
 | `GET` | `/users/{id}` | один пользователь |
 | `POST` | `/users` | создать пользователя |
 | `PUT` | `/users/{id}` | обновить пользователя |
@@ -142,7 +149,13 @@ go tool cover -html=coverage.out -o coverage.html
 ### Список пользователей
 
 ```bash
-curl -s http://localhost:8080/users
+curl -s "http://localhost:8080/users?limit=20&offset=0"
+```
+
+Пример ответа:
+
+```json
+{"data":[{"id":1,"name":"User 1","email":"user1@examle.com"}],"total":20,"limit":20,"offset":0}
 ```
 
 ### Создать пользователя
@@ -190,7 +203,8 @@ curl -i -X DELETE http://localhost:8080/orders/1
 - [x] docker-compose (3 реплики + volume для SQLite)
 - [ ] аутентификация (JWT / API key) и ограничение доступа к мутациям
 - [ ] валидация входных данных и единый слой ошибок
-- [ ] пагинация для списков users/orders
+- [x] пагинация для списка users (`limit`/`offset`)
+- [ ] пагинация для списка orders
 
 ## Автор
 

@@ -4,21 +4,60 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"go-api-server/models"
 )
 
-// GetUsers returns all users as JSON.
+type usersPage struct {
+	Data   []models.User `json:"data"`
+	Total  int           `json:"total"`
+	Limit  int           `json:"limit"`
+	Offset int           `json:"offset"`
+}
+
+// GetUsers returns a paginated list of users as JSON.
 func GetUsers(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		stmt, err := db.Prepare(`SELECT id, name, email FROM users`)
+		limit := 20
+		offset := 0
+
+		q := r.URL.Query()
+		if raw := q.Get("limit"); raw != "" {
+			n, err := strconv.Atoi(raw)
+			if err != nil {
+				writeError(w, http.StatusBadRequest, "invalid limit")
+				return
+			}
+			limit = n
+		}
+		if raw := q.Get("offset"); raw != "" {
+			n, err := strconv.Atoi(raw)
+			if err != nil {
+				writeError(w, http.StatusBadRequest, "invalid offset")
+				return
+			}
+			offset = n
+		}
+		if limit > 100 {
+			writeError(w, http.StatusBadRequest, "limit cannot exceed 100")
+			return
+		}
+
+		var total int
+		if err := db.QueryRow(`SELECT COUNT(*) FROM users`).Scan(&total); err != nil {
+			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		stmt, err := db.Prepare(`SELECT id, name, email FROM users LIMIT ? OFFSET ?`)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 		defer stmt.Close()
 
-		rows, err := stmt.Query()
+		rows, err := stmt.Query(limit, offset)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
@@ -39,7 +78,12 @@ func GetUsers(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		respondJSON(w, http.StatusOK, users)
+		respondJSON(w, http.StatusOK, usersPage{
+			Data:   users,
+			Total:  total,
+			Limit:  limit,
+			Offset: offset,
+		})
 	}
 }
 

@@ -283,3 +283,25 @@
 
 - Убран устаревший `version: "3.8"` из `docker-compose.yml` (в Compose v2+/v5 игнорируется).
 - В README команды: `docker compose` (плагин), не `docker-compose`.
+
+## Шаг 24 — 2026-09-03
+
+### Исходник промпта
+
+> Пагинация GET /users: limit/offset, валидация, COUNT(*), ответ {data,total,limit,offset}; TestGetUsersPagination; go test ./handlers -v.
+
+### Краткий результат
+
+- `GetUsers` с пагинацией и структурой `usersPage`; `respondJSON` без изменений.
+- Обновлён `TestGetUsers`, добавлен `TestGetUsersPagination`; тесты зелёные.
+
+## Шаг 25 — 2026-09-03
+
+### Исходник промпта
+
+> выглядит ок, только нужно еще указать, что надо билд делать заново после изменения кода и Agents давно не правили
+
+### Краткий результат
+
+- README: после правок кода — `docker compose up -d --build` / повторный `docker build`.
+- `AGENTS.md` актуализирован: тесты, Docker/Compose, пагинация `GetUsers`, Migrate, без `version` в compose.

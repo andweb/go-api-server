@@ -69,18 +69,113 @@ func TestGetUsers(t *testing.T) {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
 	}
 
-	var got []models.User
+	var got usersPage
 	if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != len(want) {
-		t.Fatalf("len(users) = %d, want %d", len(got), len(want))
+	if got.Total != len(want) {
+		t.Errorf("total = %d, want %d", got.Total, len(want))
+	}
+	if got.Limit != 20 || got.Offset != 0 {
+		t.Errorf("limit/offset = %d/%d, want 20/0", got.Limit, got.Offset)
+	}
+	if len(got.Data) != len(want) {
+		t.Fatalf("len(data) = %d, want %d", len(got.Data), len(want))
 	}
 	for i := range want {
-		if got[i] != want[i] {
-			t.Errorf("users[%d] = %+v, want %+v", i, got[i], want[i])
+		if got.Data[i] != want[i] {
+			t.Errorf("data[%d] = %+v, want %+v", i, got.Data[i], want[i])
 		}
 	}
+}
+
+func TestGetUsersPagination(t *testing.T) {
+	db := setupTestDB(t)
+	users := []models.User{
+		insertUser(t, db, "User1", "u1@example.com"),
+		insertUser(t, db, "User2", "u2@example.com"),
+		insertUser(t, db, "User3", "u3@example.com"),
+		insertUser(t, db, "User4", "u4@example.com"),
+	}
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /users", GetUsers(db))
+
+	t.Run("first page", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/users?limit=2&offset=0", nil)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
+		}
+
+		var got usersPage
+		if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
+			t.Fatal(err)
+		}
+		if got.Total != 4 || got.Limit != 2 || got.Offset != 0 {
+			t.Errorf("meta = total=%d limit=%d offset=%d, want 4/2/0", got.Total, got.Limit, got.Offset)
+		}
+		if len(got.Data) != 2 {
+			t.Fatalf("len(data) = %d, want 2", len(got.Data))
+		}
+		if got.Data[0] != users[0] || got.Data[1] != users[1] {
+			t.Errorf("data = %+v, want first two %+v", got.Data, users[:2])
+		}
+	})
+
+	t.Run("second page", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/users?limit=2&offset=2", nil)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusOK {
+			t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
+		}
+
+		var got usersPage
+		if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
+			t.Fatal(err)
+		}
+		if got.Total != 4 || got.Limit != 2 || got.Offset != 2 {
+			t.Errorf("meta = total=%d limit=%d offset=%d, want 4/2/2", got.Total, got.Limit, got.Offset)
+		}
+		if len(got.Data) != 2 {
+			t.Fatalf("len(data) = %d, want 2", len(got.Data))
+		}
+		if got.Data[0] != users[2] || got.Data[1] != users[3] {
+			t.Errorf("data = %+v, want next two %+v", got.Data, users[2:])
+		}
+	})
+
+	t.Run("limit too large", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/users?limit=200", nil)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusBadRequest, rec.Body.String())
+		}
+
+		var body errorBody
+		if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		if body.Error != "limit cannot exceed 100" {
+			t.Errorf("error = %q, want %q", body.Error, "limit cannot exceed 100")
+		}
+	})
+
+	t.Run("invalid limit", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/users?limit=abc", nil)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("status = %d, want %d; body=%s", rec.Code, http.StatusBadRequest, rec.Body.String())
+		}
+	})
 }
 
 func TestGetUser(t *testing.T) {
