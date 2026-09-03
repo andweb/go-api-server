@@ -21,6 +21,7 @@ go-api-server/
 ├── cmd/seed/seed.go  # заполнение тестовыми данными
 ├── data/             # shop.db (создаётся при запуске)
 ├── Dockerfile        # multistage-сборка образа
+├── docker-compose.yml # 3 реплики API на 8080–8082
 ├── AGENTS.md         # правила для AI-агентов
 └── go.mod
 ```
@@ -47,7 +48,32 @@ go run main.go
 Сервер слушает `http://localhost:8080`.  
 Повторный запуск сида при уже заполненной таблице `users` выведет `Database already seeded` и завершится без дублей.
 
-### Docker
+### 🐳 Запуск через Docker Compose
+
+Поднимает **3 экземпляра** API на портах **8080**, **8081** и **8082**. Папка `./data` общая для всех контейнеров.
+
+```bash
+# Собрать и запустить в фоне
+docker compose up -d
+
+# Смотреть логи всех реплик
+docker compose logs -f
+
+# Остановить и убрать контейнеры
+docker compose down
+```
+
+Проверка:
+
+```bash
+curl -s http://localhost:8080/users
+curl -s http://localhost:8081/users
+curl -s http://localhost:8082/users
+```
+
+> ⚠️ SQLite плохо переносит параллельную запись с нескольких процессов. Для учёбы масштабирование ок; в проде лучше одна БД с нормальной конкурентностью (Postgres и т.п.).
+
+### Docker (один контейнер)
 
 ```bash
 # Собрать образ
@@ -161,7 +187,7 @@ curl -i -X DELETE http://localhost:8080/orders/1
 
 - [x] unit-тесты для handlers
 - [x] Dockerfile (multistage)
-- [ ] docker-compose (API + volume для SQLite)
+- [x] docker-compose (3 реплики + volume для SQLite)
 - [ ] аутентификация (JWT / API key) и ограничение доступа к мутациям
 - [ ] валидация входных данных и единый слой ошибок
 - [ ] пагинация для списков users/orders

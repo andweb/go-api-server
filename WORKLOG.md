@@ -260,3 +260,26 @@
 ### Краткий результат
 
 - В README Docker: `docker run -d --name go-api-server`, `docker stop` / `docker rm`, пример с volume.
+
+## Шаг 22 — 2026-09-03
+
+### Исходник промпта
+
+> docker-compose.yml v3.8: сервис api, build, ports 8080-8082:8080, volume ./data, restart, deploy.replicas: 3; README раздел Compose.
+
+### Краткий результат
+
+- Добавлен `docker-compose.yml` (3 реплики, порты 8080–8082, общий `./data`).
+- `container_name` не задан — конфликтует с `replicas` (комментарий в файле).
+- README: раздел «🐳 Запуск через Docker Compose».
+
+## Шаг 23 — 2026-09-03
+
+### Исходник промпта
+
+> docker compose version → Docker Compose version v5.5.0. не знал?
+
+### Краткий результат
+
+- Убран устаревший `version: "3.8"` из `docker-compose.yml` (в Compose v2+/v5 игнорируется).
+- В README команды: `docker compose` (плагин), не `docker-compose`.
