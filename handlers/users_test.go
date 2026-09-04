@@ -93,7 +93,7 @@ func TestGetUsers(t *testing.T) {
 		t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
 	}
 
-	var got usersPage
+	var got UsersPage
 	if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +134,7 @@ func TestGetUsersPagination(t *testing.T) {
 			t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
 		}
 
-		var got usersPage
+		var got UsersPage
 		if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
 			t.Fatal(err)
 		}
@@ -158,7 +158,7 @@ func TestGetUsersPagination(t *testing.T) {
 			t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
 		}
 
-		var got usersPage
+		var got UsersPage
 		if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
 			t.Fatal(err)
 		}

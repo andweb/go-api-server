@@ -7,6 +7,7 @@
 - **Go 1.22+**
 - **SQLite** (`modernc.org/sqlite`, файл `data/shop.db`)
 - **JWT** (`github.com/golang-jwt/jwt/v5`) + **bcrypt** (`golang.org/x/crypto/bcrypt`)
+- **Swagger / OpenAPI** — `swaggo/swag` + `http-swagger/v2` (UI на `/swagger/index.html`)
 - **Стандартная библиотека** — `net/http`, `database/sql`, `encoding/json`
 
 Без фреймворков и ORM: роутинг через `http.ServeMux` (method+path patterns), SQL — параметризованные запросы.
@@ -15,10 +16,11 @@
 
 ```text
 go-api-server/
-├── main.go              # роутер, JWT-защита мутаций, :8080
+├── main.go              # роутер, JWT, Swagger UI, :8080
+├── docs/                # сгенерированные swagger.json / docs.go (swag init)
 ├── models/              # User (с password), Order, валидация, bcrypt
 ├── storage/             # InitDB / CloseDB, схема SQLite
-├── handlers/            # users, orders, auth, helpers
+├── handlers/            # users, orders, auth, helpers (+ swag-комментарии)
 ├── middleware/          # AuthMiddleware (Bearer JWT)
 ├── cmd/seed/seed.go     # тестовые данные (пароль password123)
 ├── data/                # shop.db
@@ -46,7 +48,17 @@ go run main.go
 ```
 
 Сервер слушает `http://localhost:8080`.  
+Swagger UI: [http://localhost:8080/swagger/index.html](http://localhost:8080/swagger/index.html).  
 Сид создаёт 20 пользователей с паролем `password123` (email `userN@examle.com`).
+
+### Перегенерация OpenAPI
+
+После изменения swag-комментариев в хендлерах или `main.go`:
+
+```bash
+go install github.com/swaggo/swag/cmd/swag@latest
+swag init -g main.go -o docs
+```
 
 ### 🐳 Запуск через Docker Compose
 
@@ -137,6 +149,7 @@ go tool cover -html=coverage.out -o coverage.html
 | `GET` | `/users/{id}/orders` | нет | заказы пользователя |
 | `POST` | `/orders` | Bearer | создать заказ |
 | `DELETE` | `/orders/{id}` | Bearer | удалить заказ |
+| `GET` | `/swagger/*` | нет | Swagger UI + OpenAPI spec |
 
 Ошибки:
 
@@ -220,6 +233,7 @@ curl -i -X DELETE http://localhost:8080/orders/1 \
 - [x] валидация входных данных (`ValidateUser`, пагинация limit/offset)
 - [x] пагинация для списка users (`limit`/`offset`)
 - [x] пагинация для заказов пользователя (`GET /users/{id}/orders`)
+- [x] Swagger / OpenAPI (`/swagger/index.html`)
 
 ## Автор
 

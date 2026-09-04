@@ -22,19 +22,22 @@ go run ./cmd/seed    # пароль сида: password123
 export JWT_SECRET=dev-secret-change-me
 go run main.go
 go test ./...
+swag init -g main.go -o docs   # после смены @-комментариев swag
 docker compose up -d --build
 ```
 
 **После изменения кода** — `docker compose up -d --build`.  
-Секрет JWT: `JWT_SECRET` (дефолт в коде/compose: `dev-secret-change-me`).
+Секрет JWT: `JWT_SECRET` (дефолт в коде/compose: `dev-secret-change-me`).  
+Swagger UI: `http://localhost:8080/swagger/index.html`.
 
 ## Архитектура
 
 ```
-main.go           # ServeMux, AuthMiddleware на мутациях
+main.go           # ServeMux, AuthMiddleware, /swagger/
+docs/             # сгенерировано swag (docs.go, swagger.json/yaml)
 models/           # User(+password), Order, Validate*, HashPassword
 storage/          # InitDB, Migrate, Schema
-handlers/         # users, orders, auth, helpers
+handlers/         # users, orders, auth, helpers (+ swag annotations)
 middleware/       # AuthMiddleware, GetUserIDFromContext
 cmd/seed/         # сид с bcrypt-паролями
 ```
@@ -64,15 +67,19 @@ cmd/seed/         # сид с bcrypt-паролями
 | POST | `/register`, `/login` | нет |
 | GET | `/users`, `/users/{id}`, `/users/{id}/orders` | нет |
 | POST/PUT/DELETE | `/users…`, POST/DELETE `/orders…` | Bearer JWT |
+| GET | `/swagger/` | нет (UI + spec) |
 
 Пагинация через `parsePagination`. Ошибки через `handleError` → `{"error","code","timestamp"}`.
 
 `CreateUser` требует `password` (≥6), хеширует перед INSERT.  
 Сид: все users с паролем `password123`.
 
+Swagger: метаданные в `main.go` (`@title`, `@securityDefinitions.apikey BearerAuth`); аннотации на хендлерах Auth/Users/Orders; импорт `_ "go-api-server/docs"`; после правок комментариев — `swag init -g main.go -o docs`. Экспортированные типы для схем: `AuthRequest`, `AuthResponse`, `UsersPage`, `OrdersPage`.
+
 ## Правила
 
 - SQL только с `?`, без `fmt.Sprintf` в запросах.
 - Пароль/хеш не отдавать в JSON ответов.
 - Не коммитить `data/*.db`, `coverage.*`, `.env`.
+- После смены swag-комментариев перегенерировать `docs/` (`swag init`).
 - Не раздувать AGENTS общими гайдами по Go.

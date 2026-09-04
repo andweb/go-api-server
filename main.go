@@ -4,18 +4,24 @@ import (
 	"log"
 	"net/http"
 
+	httpSwagger "github.com/swaggo/http-swagger/v2"
+
 	"go-api-server/handlers"
 	"go-api-server/middleware"
 	"go-api-server/storage"
+
+	_ "go-api-server/docs"
 )
 
-func loggingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("%s %s", r.Method, r.URL.Path)
-		next.ServeHTTP(w, r)
-	})
-}
-
+// @title           go-api-server API
+// @version         1.0
+// @description     REST API on Go with SQLite, JWT auth and pagination.
+// @host            localhost:8080
+// @BasePath        /
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token.
 func main() {
 	db, err := storage.InitDB()
 	if err != nil {
@@ -38,9 +44,19 @@ func main() {
 	mux.Handle("POST /orders", middleware.AuthMiddleware(handlers.CreateOrder(db)))
 	mux.Handle("DELETE /orders/{id}", middleware.AuthMiddleware(handlers.DeleteOrder(db)))
 
+	mux.Handle("GET /swagger/", httpSwagger.WrapHandler)
+
 	addr := ":8080"
 	log.Printf("listening on %s", addr)
+	log.Printf("swagger UI: http://localhost%s/swagger/index.html", addr)
 	if err := http.ListenAndServe(addr, loggingMiddleware(mux)); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("%s %s", r.Method, r.URL.Path)
+		next.ServeHTTP(w, r)
+	})
 }

@@ -8,14 +8,24 @@ import (
 	"go-api-server/models"
 )
 
-type usersPage struct {
+type UsersPage struct {
 	Data   []models.User `json:"data"`
 	Total  int           `json:"total"`
 	Limit  int           `json:"limit"`
 	Offset int           `json:"offset"`
 }
 
-// GetUsers returns a paginated list of users as JSON.
+// GetUsers godoc
+// @Summary      List users
+// @Description  Returns a paginated list of users
+// @Tags         Users
+// @Produce      json
+// @Param        limit   query     int  false  "Page size (1-100)"  default(20)
+// @Param        offset  query     int  false  "Offset (>=0)"       default(0)
+// @Success      200     {object}  UsersPage
+// @Failure      400     {object}  ErrorResponse
+// @Failure      500     {object}  ErrorResponse
+// @Router       /users [get]
 func GetUsers(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		limit, offset, err := parsePagination(r)
@@ -58,7 +68,7 @@ func GetUsers(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		respondJSON(w, http.StatusOK, usersPage{
+		respondJSON(w, http.StatusOK, UsersPage{
 			Data:   users,
 			Total:  total,
 			Limit:  limit,
@@ -67,7 +77,17 @@ func GetUsers(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-// GetUser returns a single user by ID from the URL path.
+// GetUser godoc
+// @Summary      Get user
+// @Description  Returns a single user by ID
+// @Tags         Users
+// @Produce      json
+// @Param        id   path      int  true  "User ID"
+// @Success      200  {object}  models.User
+// @Failure      400  {object}  ErrorResponse
+// @Failure      404  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Router       /users/{id} [get]
 func GetUser(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := parseUserID(r)
@@ -91,7 +111,19 @@ func GetUser(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-// CreateUser creates a user from the JSON request body and returns it with status 201.
+// CreateUser godoc
+// @Summary      Create user
+// @Description  Creates a user (requires JWT)
+// @Tags         Users
+// @Accept       json
+// @Produce      json
+// @Param        user  body      models.User  true  "User payload (name, email, password)"
+// @Success      201   {object}  models.User
+// @Failure      400   {object}  ErrorResponse
+// @Failure      401   {object}  ErrorResponse
+// @Failure      500   {object}  ErrorResponse
+// @Security     BearerAuth
+// @Router       /users [post]
 func CreateUser(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var u models.User
@@ -138,7 +170,21 @@ func CreateUser(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-// UpdateUser updates an existing user by ID and returns the updated record.
+// UpdateUser godoc
+// @Summary      Update user
+// @Description  Updates a user by ID (requires JWT)
+// @Tags         Users
+// @Accept       json
+// @Produce      json
+// @Param        id    path      int          true  "User ID"
+// @Param        user  body      models.User  true  "User payload (name, email)"
+// @Success      200   {object}  models.User
+// @Failure      400   {object}  ErrorResponse
+// @Failure      401   {object}  ErrorResponse
+// @Failure      404   {object}  ErrorResponse
+// @Failure      500   {object}  ErrorResponse
+// @Security     BearerAuth
+// @Router       /users/{id} [put]
 func UpdateUser(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := parseUserID(r)
@@ -186,7 +232,19 @@ func UpdateUser(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-// DeleteUser deletes a user by ID and responds with 204 No Content.
+// DeleteUser godoc
+// @Summary      Delete user
+// @Description  Deletes a user by ID (requires JWT)
+// @Tags         Users
+// @Produce      json
+// @Param        id   path  int  true  "User ID"
+// @Success      204  "No Content"
+// @Failure      400  {object}  ErrorResponse
+// @Failure      401  {object}  ErrorResponse
+// @Failure      404  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Security     BearerAuth
+// @Router       /users/{id} [delete]
 func DeleteUser(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := parseUserID(r)

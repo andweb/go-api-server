@@ -13,13 +13,15 @@ import (
 	"go-api-server/models"
 )
 
-type authRequest struct {
+// AuthRequest is the JSON body for /register and /login.
+type AuthRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 	Name     string `json:"name"`
 }
 
-type authResponse struct {
+// AuthResponse is returned after successful register/login.
+type AuthResponse struct {
 	Token  string `json:"token"`
 	UserID int64  `json:"user_id"`
 	Email  string `json:"email"`
@@ -52,10 +54,20 @@ func generateJWT(userID int64, email string) (string, error) {
 	return token.SignedString(jwtSecret())
 }
 
-// Register creates a user from email/password and returns a JWT.
+// @Summary      Register
+// @Description  Creates a user and returns a JWT
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        credentials  body      AuthRequest  true  "email, password (≥6), optional name"
+// @Success      201          {object}  AuthResponse
+// @Failure      400          {object}  ErrorResponse
+// @Failure      409          {object}  ErrorResponse
+// @Failure      500          {object}  ErrorResponse
+// @Router       /register [post]
 func Register(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req authRequest
+		var req AuthRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			handleError(w, err, http.StatusBadRequest, "invalid request")
 			return
@@ -105,14 +117,24 @@ func Register(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		respondJSON(w, http.StatusCreated, authResponse{Token: token, UserID: id, Email: req.Email})
+		respondJSON(w, http.StatusCreated, AuthResponse{Token: token, UserID: id, Email: req.Email})
 	}
 }
 
-// Login verifies credentials and returns a JWT.
+// @Summary      Login
+// @Description  Verifies credentials and returns a JWT
+// @Tags         Auth
+// @Accept       json
+// @Produce      json
+// @Param        credentials  body      AuthRequest  true  "email and password"
+// @Success      200          {object}  AuthResponse
+// @Failure      400          {object}  ErrorResponse
+// @Failure      401          {object}  ErrorResponse
+// @Failure      500          {object}  ErrorResponse
+// @Router       /login [post]
 func Login(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req authRequest
+		var req AuthRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			handleError(w, err, http.StatusBadRequest, "invalid request")
 			return
@@ -144,6 +166,6 @@ func Login(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		respondJSON(w, http.StatusOK, authResponse{Token: token, UserID: id, Email: req.Email})
+		respondJSON(w, http.StatusOK, AuthResponse{Token: token, UserID: id, Email: req.Email})
 	}
 }

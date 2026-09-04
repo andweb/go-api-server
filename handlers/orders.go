@@ -8,14 +8,26 @@ import (
 	"go-api-server/models"
 )
 
-type ordersPage struct {
+type OrdersPage struct {
 	Data   []models.Order `json:"data"`
 	Total  int            `json:"total"`
 	Limit  int            `json:"limit"`
 	Offset int            `json:"offset"`
 }
 
-// GetUserOrders returns a paginated list of orders for the user ID from the URL path.
+// GetUserOrders godoc
+// @Summary      List user orders
+// @Description  Returns a paginated list of orders for a user
+// @Tags         Orders
+// @Produce      json
+// @Param        id      path      int  true   "User ID"
+// @Param        limit   query     int  false  "Page size (1-100)"  default(20)
+// @Param        offset  query     int  false  "Offset (>=0)"       default(0)
+// @Success      200     {object}  OrdersPage
+// @Failure      400     {object}  ErrorResponse
+// @Failure      404     {object}  ErrorResponse
+// @Failure      500     {object}  ErrorResponse
+// @Router       /users/{id}/orders [get]
 func GetUserOrders(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID, err := parseUserID(r)
@@ -75,7 +87,7 @@ func GetUserOrders(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		respondJSON(w, http.StatusOK, ordersPage{
+		respondJSON(w, http.StatusOK, OrdersPage{
 			Data:   orders,
 			Total:  total,
 			Limit:  limit,
@@ -84,7 +96,20 @@ func GetUserOrders(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-// CreateOrder creates an order from the JSON body after checking that the user exists.
+// CreateOrder godoc
+// @Summary      Create order
+// @Description  Creates an order (requires JWT)
+// @Tags         Orders
+// @Accept       json
+// @Produce      json
+// @Param        order  body      models.Order  true  "Order payload"
+// @Success      201    {object}  models.Order
+// @Failure      400    {object}  ErrorResponse
+// @Failure      401    {object}  ErrorResponse
+// @Failure      404    {object}  ErrorResponse
+// @Failure      500    {object}  ErrorResponse
+// @Security     BearerAuth
+// @Router       /orders [post]
 func CreateOrder(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var o models.Order
@@ -127,7 +152,19 @@ func CreateOrder(db *sql.DB) http.HandlerFunc {
 	}
 }
 
-// DeleteOrder deletes an order by ID and responds with 204, or 404 if missing.
+// DeleteOrder godoc
+// @Summary      Delete order
+// @Description  Deletes an order by ID (requires JWT)
+// @Tags         Orders
+// @Produce      json
+// @Param        id   path  int  true  "Order ID"
+// @Success      204  "No Content"
+// @Failure      400  {object}  ErrorResponse
+// @Failure      401  {object}  ErrorResponse
+// @Failure      404  {object}  ErrorResponse
+// @Failure      500  {object}  ErrorResponse
+// @Security     BearerAuth
+// @Router       /orders/{id} [delete]
 func DeleteOrder(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := parseUserID(r)

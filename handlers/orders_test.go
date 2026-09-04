@@ -50,7 +50,7 @@ func TestGetUserOrders(t *testing.T) {
 			t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
 		}
 
-		var got ordersPage
+		var got OrdersPage
 		if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
 			t.Fatal(err)
 		}
@@ -85,7 +85,7 @@ func TestGetUserOrders(t *testing.T) {
 			t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
 		}
 
-		var got ordersPage
+		var got OrdersPage
 		if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
 			t.Fatal(err)
 		}
@@ -143,7 +143,7 @@ func TestGetUserOrdersPagination(t *testing.T) {
 			t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
 		}
 
-		var got ordersPage
+		var got OrdersPage
 		if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
 			t.Fatal(err)
 		}
@@ -167,7 +167,7 @@ func TestGetUserOrdersPagination(t *testing.T) {
 			t.Fatalf("status = %d, want %d; body=%s", rec.Code, http.StatusOK, rec.Body.String())
 		}
 
-		var got ordersPage
+		var got OrdersPage
 		if err := json.NewDecoder(rec.Body).Decode(&got); err != nil {
 			t.Fatal(err)
 		}

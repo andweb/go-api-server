@@ -379,3 +379,24 @@
 
 - Добавлены `handlers/auth.go`, `middleware/auth.go`; password в users; JWT_SECRET.
 - Сид/тесты/README/AGENTS обновлены; старую `shop.db` нужно пересоздать.
+
+## Шаг 33 — 2026-09-04
+
+### Исходник промпта
+
+> Swagger/OpenAPI: swag + http-swagger/v2; комментарии к users/orders; GET /swagger/*; обновить доки.
+
+### Краткий результат
+
+- Аннотации swag на Users/Orders; `UsersPage`/`OrdersPage`; `main.go` + `_ "go-api-server/docs"` + `/swagger/`.
+- `swag init -g main.go -o docs`; README/AGENTS обновлены.
+
+## Шаг 34 — 2026-09-04
+
+### Исходник промпта
+
+> забыли ручки логина добавить в свагер
+
+### Краткий результат
+
+- Swag-аннотации на `/register` и `/login` (tag Auth); экспортированы `AuthRequest`/`AuthResponse`; docs перегенерированы.
