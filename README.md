@@ -6,6 +6,7 @@
 
 - **Go 1.22+**
 - **SQLite** (`modernc.org/sqlite`, файл `data/shop.db`)
+- **JWT** (`github.com/golang-jwt/jwt/v5`) + **bcrypt** (`golang.org/x/crypto/bcrypt`)
 - **Стандартная библиотека** — `net/http`, `database/sql`, `encoding/json`
 
 Без фреймворков и ORM: роутинг через `http.ServeMux` (method+path patterns), SQL — параметризованные запросы.
@@ -14,15 +15,16 @@
 
 ```text
 go-api-server/
-├── main.go           # точка входа, роутер, middleware, сервер :8080
-├── models/           # структуры User и Order + JSON-теги
-├── storage/          # InitDB / CloseDB, схема SQLite
-├── handlers/         # HTTP-хендлеры users/orders + helpers
-├── cmd/seed/seed.go  # заполнение тестовыми данными
-├── data/             # shop.db (создаётся при запуске)
-├── Dockerfile        # multistage-сборка образа
-├── docker-compose.yml # 3 реплики API на 8080–8082
-├── AGENTS.md         # правила для AI-агентов
+├── main.go              # роутер, JWT-защита мутаций, :8080
+├── models/              # User (с password), Order, валидация, bcrypt
+├── storage/             # InitDB / CloseDB, схема SQLite
+├── handlers/            # users, orders, auth, helpers
+├── middleware/          # AuthMiddleware (Bearer JWT)
+├── cmd/seed/seed.go     # тестовые данные (пароль password123)
+├── data/                # shop.db
+├── Dockerfile
+├── docker-compose.yml
+├── AGENTS.md
 └── go.mod
 ```
 
@@ -31,22 +33,20 @@ go-api-server/
 ### Локально
 
 ```bash
-# 1. Клонировать репозиторий
 git clone https://github.com/andweb/go-api-server.git
 cd go-api-server
-
-# 2. Подтянуть зависимости
 go mod tidy
 
-# 3. Заполнить БД тестовыми данными (один раз)
+# Если обновляли схему users (password) — удалите старую БД и пересоздайте:
+rm -f data/shop.db
 go run ./cmd/seed
 
-# 4. Запустить сервер
+export JWT_SECRET=dev-secret-change-me
 go run main.go
 ```
 
 Сервер слушает `http://localhost:8080`.  
-Повторный запуск сида при уже заполненной таблице `users` выведет `Database already seeded` и завершится без дублей.
+Сид создаёт 20 пользователей с паролем `password123` (email `userN@examle.com`).
 
 ### 🐳 Запуск через Docker Compose
 
@@ -125,26 +125,51 @@ go tool cover -html=coverage.out -o coverage.html
 
 ## Эндпоинты
 
-| Метод | Путь | Описание |
-|-------|------|----------|
-| `GET` | `/users` | список пользователей (`?limit=&offset=`, по умолчанию 20/0) |
-| `GET` | `/users/{id}` | один пользователь |
-| `POST` | `/users` | создать пользователя |
-| `PUT` | `/users/{id}` | обновить пользователя |
-| `DELETE` | `/users/{id}` | удалить пользователя |
-| `GET` | `/users/{id}/orders` | заказы пользователя (`?limit=&offset=`, по умолчанию 20/0) |
-| `POST` | `/orders` | создать заказ |
-| `DELETE` | `/orders/{id}` | удалить заказ |
+| Метод | Путь | Auth | Описание |
+|-------|------|------|----------|
+| `POST` | `/register` | нет | регистрация, ответ с JWT |
+| `POST` | `/login` | нет | логин, ответ с JWT |
+| `GET` | `/users` | нет | список (`?limit=&offset=`) |
+| `GET` | `/users/{id}` | нет | один пользователь |
+| `POST` | `/users` | Bearer | создать пользователя |
+| `PUT` | `/users/{id}` | Bearer | обновить пользователя |
+| `DELETE` | `/users/{id}` | Bearer | удалить пользователя |
+| `GET` | `/users/{id}/orders` | нет | заказы пользователя |
+| `POST` | `/orders` | Bearer | создать заказ |
+| `DELETE` | `/orders/{id}` | Bearer | удалить заказ |
 
-Ошибки возвращаются в формате:
+Ошибки:
 
 ```json
 {"error":"not found","code":404,"timestamp":"2026-09-03T12:00:00Z"}
 ```
 
-Коды: `200` / `201` / `204` при успехе, `400` при невалидном вводе, `404` если запись не найдена.
-
 ## Примеры curl
+
+### Регистрация / логин
+
+```bash
+curl -s -X POST http://localhost:8080/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"alice@example.com","password":"password123","name":"Alice"}'
+
+curl -s -X POST http://localhost:8080/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user1@examle.com","password":"password123"}'
+```
+
+Пример ответа:
+
+```json
+{"token":"<jwt>","user_id":1,"email":"user1@examle.com"}
+```
+
+Дальше используйте заголовок:
+
+```bash
+TOKEN=... # из ответа login/register
+curl -s -H "Authorization: Bearer $TOKEN" ...
+```
 
 ### Список пользователей
 
@@ -152,24 +177,13 @@ go tool cover -html=coverage.out -o coverage.html
 curl -s "http://localhost:8080/users?limit=20&offset=0"
 ```
 
-Пример ответа:
-
-```json
-{"data":[{"id":1,"name":"User 1","email":"user1@examle.com"}],"total":20,"limit":20,"offset":0}
-```
-
-### Создать пользователя
+### Создать пользователя (нужен JWT)
 
 ```bash
 curl -s -X POST http://localhost:8080/users \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"Alice","email":"alice@example.com"}'
-```
-
-Пример ответа:
-
-```json
-{"id":21,"name":"Alice","email":"alice@example.com"}
+  -d '{"name":"Alice","email":"alice2@example.com","password":"password123"}'
 ```
 
 ### Заказы пользователя
@@ -178,27 +192,21 @@ curl -s -X POST http://localhost:8080/users \
 curl -s "http://localhost:8080/users/1/orders?limit=20&offset=0"
 ```
 
-Пример ответа:
-
-```json
-{"data":[{"id":1,"user_id":1,"product":"Laptop","quantity":1,"price":1000}],"total":5,"limit":20,"offset":0}
-```
-
-### Создать заказ
+### Создать заказ (нужен JWT)
 
 ```bash
 curl -s -X POST http://localhost:8080/orders \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"user_id":1,"product":"Laptop","quantity":2,"price":1000}'
 ```
 
-### Удалить заказ
+### Удалить заказ (нужен JWT)
 
 ```bash
-curl -i -X DELETE http://localhost:8080/orders/1
+curl -i -X DELETE http://localhost:8080/orders/1 \
+  -H "Authorization: Bearer $TOKEN"
 ```
-
-Ожидаемый ответ при успехе: `204 No Content`.
 
 ## Что дальше
 
@@ -207,7 +215,7 @@ curl -i -X DELETE http://localhost:8080/orders/1
 - [x] unit-тесты для handlers
 - [x] Dockerfile (multistage)
 - [x] docker-compose (3 реплики + volume для SQLite)
-- [ ] аутентификация (JWT / API key) и ограничение доступа к мутациям
+- [x] аутентификация (JWT) и защита мутаций
 - [x] единый слой ошибок (`handleError` / `ErrorResponse`)
 - [x] валидация входных данных (`ValidateUser`, пагинация limit/offset)
 - [x] пагинация для списка users (`limit`/`offset`)

@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"go-api-server/handlers"
+	"go-api-server/middleware"
 	"go-api-server/storage"
 )
 
@@ -24,14 +25,18 @@ func main() {
 
 	mux := http.NewServeMux()
 
+	mux.HandleFunc("POST /register", handlers.Register(db))
+	mux.HandleFunc("POST /login", handlers.Login(db))
+
 	mux.HandleFunc("GET /users", handlers.GetUsers(db))
 	mux.HandleFunc("GET /users/{id}", handlers.GetUser(db))
-	mux.HandleFunc("POST /users", handlers.CreateUser(db))
-	mux.HandleFunc("PUT /users/{id}", handlers.UpdateUser(db))
-	mux.HandleFunc("DELETE /users/{id}", handlers.DeleteUser(db))
+	mux.Handle("POST /users", middleware.AuthMiddleware(handlers.CreateUser(db)))
+	mux.Handle("PUT /users/{id}", middleware.AuthMiddleware(handlers.UpdateUser(db)))
+	mux.Handle("DELETE /users/{id}", middleware.AuthMiddleware(handlers.DeleteUser(db)))
+
 	mux.HandleFunc("GET /users/{id}/orders", handlers.GetUserOrders(db))
-	mux.HandleFunc("POST /orders", handlers.CreateOrder(db))
-	mux.HandleFunc("DELETE /orders/{id}", handlers.DeleteOrder(db))
+	mux.Handle("POST /orders", middleware.AuthMiddleware(handlers.CreateOrder(db)))
+	mux.Handle("DELETE /orders/{id}", middleware.AuthMiddleware(handlers.DeleteOrder(db)))
 
 	addr := ":8080"
 	log.Printf("listening on %s", addr)

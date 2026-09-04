@@ -15,6 +15,10 @@ services:
     volumes:
       - ./data:/app/data
 
+    # Секрет подписи JWT (обязательно смените в проде)
+    environment:
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-me}
+
     # Перезапуск, если контейнер упал (кроме ручного stop)
     restart: unless-stopped
 

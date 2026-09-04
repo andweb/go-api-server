@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand/v2"
 
+	"go-api-server/models"
 	"go-api-server/storage"
 )
 
@@ -49,20 +50,25 @@ func seed(db *sql.DB) error {
 		{"Camera", 400},
 	}
 
+	hash, err := models.HashPassword("password123")
+	if err != nil {
+		return err
+	}
+
 	tx, err := db.Begin()
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
-	userStmt, err := tx.Prepare(`INSERT INTO users (name, email) VALUES (?, ?)`)
+	userStmt, err := tx.Prepare(`INSERT INTO users (name, email, password) VALUES (?, ?, ?)`)
 	if err != nil {
 		return err
 	}
 	defer userStmt.Close()
 
 	for i := 1; i <= 20; i++ {
-		if _, err := userStmt.Exec(fmt.Sprintf("User %d", i), fmt.Sprintf("user%d@examle.com", i)); err != nil {
+		if _, err := userStmt.Exec(fmt.Sprintf("User %d", i), fmt.Sprintf("user%d@examle.com", i), hash); err != nil {
 			return err
 		}
 	}

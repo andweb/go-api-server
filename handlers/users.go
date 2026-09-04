@@ -103,15 +103,25 @@ func CreateUser(db *sql.DB) http.HandlerFunc {
 			handleError(w, err, http.StatusBadRequest, err.Error())
 			return
 		}
+		if len(u.Password) < 6 {
+			handleError(w, nil, http.StatusBadRequest, "password must be at least 6 characters")
+			return
+		}
 
-		stmt, err := db.Prepare(`INSERT INTO users (name, email) VALUES (?, ?)`)
+		hash, err := models.HashPassword(u.Password)
+		if err != nil {
+			handleError(w, err, http.StatusInternalServerError, "")
+			return
+		}
+
+		stmt, err := db.Prepare(`INSERT INTO users (name, email, password) VALUES (?, ?, ?)`)
 		if err != nil {
 			handleError(w, err, http.StatusInternalServerError, "")
 			return
 		}
 		defer stmt.Close()
 
-		res, err := stmt.Exec(u.Name, u.Email)
+		res, err := stmt.Exec(u.Name, u.Email, hash)
 		if err != nil {
 			handleError(w, err, http.StatusInternalServerError, "")
 			return
@@ -123,6 +133,7 @@ func CreateUser(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
+		u.Password = ""
 		respondJSON(w, http.StatusCreated, u)
 	}
 }
@@ -170,6 +181,7 @@ func UpdateUser(db *sql.DB) http.HandlerFunc {
 		}
 
 		u.ID = id
+		u.Password = ""
 		respondJSON(w, http.StatusOK, u)
 	}
 }

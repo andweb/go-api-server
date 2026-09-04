@@ -368,3 +368,14 @@
 ### Краткий результат
 
 - В `ValidateUser` email проверяется через `regexp` (`emailRegexp`), вместо ручной проверки `@`/точки.
+
+## Шаг 32 — 2026-09-04
+
+### Исходник промпта
+
+> JWT-аутентификация: jwt/v5, bcrypt, Register/Login, AuthMiddleware, защита мутаций, seed password123, обновить доки.
+
+### Краткий результат
+
+- Добавлены `handlers/auth.go`, `middleware/auth.go`; password в users; JWT_SECRET.
+- Сид/тесты/README/AGENTS обновлены; старую `shop.db` нужно пересоздать.

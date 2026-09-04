@@ -39,7 +39,11 @@ func setupTestDB(t *testing.T) *sql.DB {
 func insertUser(t *testing.T, db *sql.DB, name, email string) models.User {
 	t.Helper()
 
-	res, err := db.Exec(`INSERT INTO users (name, email) VALUES (?, ?)`, name, email)
+	hash, err := models.HashPassword("password123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := db.Exec(`INSERT INTO users (name, email, password) VALUES (?, ?, ?)`, name, email, hash)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -261,7 +265,7 @@ func TestCreateUser(t *testing.T) {
 		mux := http.NewServeMux()
 		mux.HandleFunc("POST /users", CreateUser(db))
 
-		payload := models.User{Name: "Alice", Email: "alice@example.com"}
+		payload := models.User{Name: "Alice", Email: "alice@example.com", Password: "password123"}
 		body, err := json.Marshal(payload)
 		if err != nil {
 			t.Fatal(err)
