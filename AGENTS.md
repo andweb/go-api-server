@@ -89,7 +89,9 @@ docker-compose.yml   # 3 реплики api, порты 8080–8082, volume ./da
 | POST | `/orders` | `CreateOrder` | |
 | DELETE | `/orders/{id}` | `DeleteOrder` | 204 / 404 |
 
-Пагинация (`GetUsers`, `GetUserOrders`): default `limit=20`, `offset=0`; `limit > 100` → 400 `"limit cannot exceed 100"`; нечисловые query → 400; SQL `LIMIT ? OFFSET ?` + `SELECT COUNT(*)`.
+Пагинация (`GetUsers`, `GetUserOrders`): default `limit=20`, `offset=0` через `parsePagination`; `limit < 1` / `limit > 100` / `offset < 0` → 400 с явным текстом; нечисловые query → 400 `"invalid request"`; SQL `LIMIT ? OFFSET ?` + `SELECT COUNT(*)`.
+
+`CreateUser` / `UpdateUser`: после Decode — `models.ValidateUser` (name 2–100, email через regexp).
 
 HTTP-коды: `200` / `201` / `204`; `400`/`404`/`500` через `handleError` → `{"error","code","timestamp"}`.
 

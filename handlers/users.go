@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
-	"strconv"
 
 	"go-api-server/models"
 )
@@ -19,28 +18,9 @@ type usersPage struct {
 // GetUsers returns a paginated list of users as JSON.
 func GetUsers(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		limit := 20
-		offset := 0
-
-		q := r.URL.Query()
-		if raw := q.Get("limit"); raw != "" {
-			n, err := strconv.Atoi(raw)
-			if err != nil {
-				handleError(w, err, http.StatusBadRequest, "invalid request")
-				return
-			}
-			limit = n
-		}
-		if raw := q.Get("offset"); raw != "" {
-			n, err := strconv.Atoi(raw)
-			if err != nil {
-				handleError(w, err, http.StatusBadRequest, "invalid request")
-				return
-			}
-			offset = n
-		}
-		if limit > 100 {
-			handleError(w, nil, http.StatusBadRequest, "limit cannot exceed 100")
+		limit, offset, err := parsePagination(r)
+		if err != nil {
+			handleError(w, err, http.StatusBadRequest, err.Error())
 			return
 		}
 
@@ -119,6 +99,10 @@ func CreateUser(db *sql.DB) http.HandlerFunc {
 			handleError(w, err, http.StatusBadRequest, "invalid request")
 			return
 		}
+		if err := models.ValidateUser(&u); err != nil {
+			handleError(w, err, http.StatusBadRequest, err.Error())
+			return
+		}
 
 		stmt, err := db.Prepare(`INSERT INTO users (name, email) VALUES (?, ?)`)
 		if err != nil {
@@ -155,6 +139,10 @@ func UpdateUser(db *sql.DB) http.HandlerFunc {
 		var u models.User
 		if err := json.NewDecoder(r.Body).Decode(&u); err != nil {
 			handleError(w, err, http.StatusBadRequest, "invalid request")
+			return
+		}
+		if err := models.ValidateUser(&u); err != nil {
+			handleError(w, err, http.StatusBadRequest, err.Error())
 			return
 		}
 

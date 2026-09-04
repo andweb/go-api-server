@@ -190,6 +190,22 @@ func TestGetUserOrdersPagination(t *testing.T) {
 		assertErrorResponse(t, rec, http.StatusBadRequest, "limit cannot exceed 100")
 	})
 
+	t.Run("limit too small", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/users/1/orders?limit=0", nil)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+
+		assertErrorResponse(t, rec, http.StatusBadRequest, "limit must be at least 1")
+	})
+
+	t.Run("negative offset", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/users/1/orders?offset=-1", nil)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+
+		assertErrorResponse(t, rec, http.StatusBadRequest, "offset cannot be negative")
+	})
+
 	t.Run("invalid limit", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/users/1/orders?limit=abc", nil)
 		rec := httptest.NewRecorder()

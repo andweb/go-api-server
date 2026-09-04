@@ -209,7 +209,7 @@ curl -i -X DELETE http://localhost:8080/orders/1
 - [x] docker-compose (3 реплики + volume для SQLite)
 - [ ] аутентификация (JWT / API key) и ограничение доступа к мутациям
 - [x] единый слой ошибок (`handleError` / `ErrorResponse`)
-- [ ] валидация входных данных
+- [x] валидация входных данных (`ValidateUser`, пагинация limit/offset)
 - [x] пагинация для списка users (`limit`/`offset`)
 - [x] пагинация для заказов пользователя (`GET /users/{id}/orders`)
 

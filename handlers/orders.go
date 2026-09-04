@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"net/http"
-	"strconv"
 
 	"go-api-server/models"
 )
@@ -25,28 +24,9 @@ func GetUserOrders(db *sql.DB) http.HandlerFunc {
 			return
 		}
 
-		limit := 20
-		offset := 0
-
-		q := r.URL.Query()
-		if raw := q.Get("limit"); raw != "" {
-			n, err := strconv.Atoi(raw)
-			if err != nil {
-				handleError(w, err, http.StatusBadRequest, "invalid request")
-				return
-			}
-			limit = n
-		}
-		if raw := q.Get("offset"); raw != "" {
-			n, err := strconv.Atoi(raw)
-			if err != nil {
-				handleError(w, err, http.StatusBadRequest, "invalid request")
-				return
-			}
-			offset = n
-		}
-		if limit > 100 {
-			handleError(w, nil, http.StatusBadRequest, "limit cannot exceed 100")
+		limit, offset, err := parsePagination(r)
+		if err != nil {
+			handleError(w, err, http.StatusBadRequest, err.Error())
 			return
 		}
 

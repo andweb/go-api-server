@@ -177,6 +177,22 @@ func TestGetUsersPagination(t *testing.T) {
 		assertErrorResponse(t, rec, http.StatusBadRequest, "limit cannot exceed 100")
 	})
 
+	t.Run("limit too small", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/users?limit=0", nil)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+
+		assertErrorResponse(t, rec, http.StatusBadRequest, "limit must be at least 1")
+	})
+
+	t.Run("negative offset", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/users?offset=-1", nil)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+
+		assertErrorResponse(t, rec, http.StatusBadRequest, "offset cannot be negative")
+	})
+
 	t.Run("invalid limit", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/users?limit=abc", nil)
 		rec := httptest.NewRecorder()
@@ -294,6 +310,42 @@ func TestCreateUser(t *testing.T) {
 
 		assertErrorResponse(t, rec, http.StatusBadRequest, "invalid request")
 	})
+
+	t.Run("name required", func(t *testing.T) {
+		db := setupTestDB(t)
+
+		mux := http.NewServeMux()
+		mux.HandleFunc("POST /users", CreateUser(db))
+
+		body, err := json.Marshal(models.User{Name: "", Email: "alice@example.com"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		req := httptest.NewRequest(http.MethodPost, "/users", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+
+		assertErrorResponse(t, rec, http.StatusBadRequest, "name is required")
+	})
+
+	t.Run("email invalid", func(t *testing.T) {
+		db := setupTestDB(t)
+
+		mux := http.NewServeMux()
+		mux.HandleFunc("POST /users", CreateUser(db))
+
+		body, err := json.Marshal(models.User{Name: "Alice", Email: "not-an-email"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		req := httptest.NewRequest(http.MethodPost, "/users", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+
+		assertErrorResponse(t, rec, http.StatusBadRequest, "email is invalid")
+	})
 }
 
 func TestUpdateUser(t *testing.T) {
@@ -386,6 +438,25 @@ func TestUpdateUser(t *testing.T) {
 		mux.ServeHTTP(rec, req)
 
 		assertErrorResponse(t, rec, http.StatusBadRequest, "invalid request")
+	})
+
+	t.Run("name required", func(t *testing.T) {
+		db := setupTestDB(t)
+		insertUser(t, db, "Alice", "alice@example.com")
+
+		mux := http.NewServeMux()
+		mux.HandleFunc("PUT /users/{id}", UpdateUser(db))
+
+		body, err := json.Marshal(models.User{Name: "A", Email: "alice@example.com"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		req := httptest.NewRequest(http.MethodPut, "/users/1", bytes.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+
+		assertErrorResponse(t, rec, http.StatusBadRequest, "name is required")
 	})
 }
 

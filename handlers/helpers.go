@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"strconv"
@@ -50,6 +51,37 @@ func statusMessage(status int) string {
 
 func parseUserID(r *http.Request) (int64, error) {
 	return strconv.ParseInt(r.PathValue("id"), 10, 64)
+}
+
+func parsePagination(r *http.Request) (limit, offset int, err error) {
+	limit = 20
+	offset = 0
+
+	q := r.URL.Query()
+	if raw := q.Get("limit"); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil {
+			return 0, 0, errors.New("invalid request")
+		}
+		limit = n
+	}
+	if raw := q.Get("offset"); raw != "" {
+		n, err := strconv.Atoi(raw)
+		if err != nil {
+			return 0, 0, errors.New("invalid request")
+		}
+		offset = n
+	}
+	if limit < 1 {
+		return 0, 0, errors.New("limit must be at least 1")
+	}
+	if limit > 100 {
+		return 0, 0, errors.New("limit cannot exceed 100")
+	}
+	if offset < 0 {
+		return 0, 0, errors.New("offset cannot be negative")
+	}
+	return limit, offset, nil
 }
 
 func respondJSON(w http.ResponseWriter, status int, data interface{}) {
